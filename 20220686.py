@@ -117,7 +117,11 @@ $\delta^{t+1} = \delta^{t} + \alpha\cdot\mathrm{Sign}\{∇_{\delta^t}(\frac{1}{|
 
 $\delta^t = \mathrm{Clamp}_{\epsilon}(\delta^t),$
 
-where $X_t$ is the image batch at $t$-th iteration, $J(x,y)$ is the loss functions with input image $x$ and label $y$. $\delta^t$ is the adversarial perturbation at $t$-th iteration. $\mathrm{Clamp}$ restricts the pixel value of the perturbation within the range of $[-\epsilon, \epsilon]$. $\alpha$ is the step size, which is a hyperparameter.
+where $X_t$ is the image batch at $t$-th iteration, 
+$J(x,y)$ is the loss functions with input image $x$ and label $y$. 
+$\delta^t$ is the adversarial perturbation at $t$-th iteration. 
+$\mathrm{Clamp}$ restricts the pixel value of the perturbation within the range of $[-\epsilon, \epsilon]$. 
+$\alpha$ is the step size, which is a hyperparameter.
 
 We will utilize cross entropy loss as the loss function.
 """
@@ -134,19 +138,19 @@ for epoch in range(5):  # number of epochs
         # =================== TODO 1 ======================
         # Prepare adversarial inputs
         # Add UAP to clean inputs
-        adv_inputs =
+        adv_inputs = inputs + uap.unsqueeze(0)
         # clamp adversarial input with [0,1] range
-        adv_inputs =
+        adv_inputs = adv_inputs.clamp(0, 1)
         # normalize input
-        adv_inputs =
+        adv_inputs = normalize(adv_inputs)
         # ================================================
 
 
         # =================== TODO 1 ======================
         # Get adversarial model output
-        outputs =
+        outputs = model(adv_inputs)
         # Calculate loss
-        loss =
+        loss = F.cross_entropy(outputs, labels)
         # ================================================
 
 
@@ -155,9 +159,9 @@ for epoch in range(5):  # number of epochs
 
         # =================== TODO 1 ======================
         # Update UAP with FGSM
-        uap.data =
+        uap.data = uap.data + alpha * torch.sign(grad)
         # clamp UAP with epsilon value
-        uap.data =
+        uap.data = uap.data.clamp(-eps, eps)
         # ================================================
 
         uap.grad.data.zero_()
@@ -182,15 +186,15 @@ step_size=0.7
 
 # Hyperparameter tuning
 # ======================= TODO 8 =======================
-attack_type = "" # combination of "M, N, D, T, S" e.g., "MDT", "MNDTS", ... blank string "" for simple SGD-UAP (FGSM-based)
+attack_type = "MNDTS" # combination of "M, N, D, T, S" e.g., "MDT", "MNDTS", ... blank string "" for simple SGD-UAP (FGSM-based)
 mu=1.0
-number_of_si_scales=0
-di_prob=0
-di_pad_amount=0
+number_of_si_scales=5
+di_prob=0.5
+di_pad_amount=20
 di_pad_value=0
-ti_kernel_size=0
-feature_attack = False # True for feature-level attack, False for prediction-level attack
-depth='layer1' # 'layer1', 'layer2', 'layer3', 'layer4'
+ti_kernel_size=15
+feature_attack = True # True for feature-level attack, False for prediction-level attack
+depth='layer2' # 'layer1', 'layer2', 'layer3', 'layer4'
 # ======================================================
 
 target_label = -1
