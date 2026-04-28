@@ -44,14 +44,20 @@ def calculate_loss_gradient(model, model_input, grad_input, y, target_label, fea
         loss = nn.CrossEntropyLoss()(output, y)
     if feature_attack==True:
         # TODO 2
-        # Hint 
+        # Hint
         # extract clean_features and adv_features from given layer depth with extract_features() function.
         # Then flatten the features to 2D tensors of shape (batch_size, feature_dim) before computing cosine similarity.
         # Finally, take the mean of the cosine similarity loss across the batch to get a single scalar value for backpropagation.
         # The loss should be negative cosine similarity, so that maximizing the loss corresponds to minimizing cosine similarity.
-
         # [The code below is a basic version, so it should be modified.]
-        loss = nn.CrossEntropyLoss()(output, y)
+        clean_features = extract_features(model, clean_input, depth)[0]
+        adv_features = extract_features(model, model_input, depth)[0]
+        
+        clean_features = clean_features.view(clean_features.size(0), -1)
+        adv_features = adv_features.view(adv_features.size(0), -1)
+        
+        loss = -F.cosine_similarity(adv_features, clean_features).mean()
+        
     if target_label >= 0:
         loss = -loss
     return torch.autograd.grad(loss, grad_input, retain_graph=False, create_graph=False)[0]
@@ -71,12 +77,15 @@ def update_mi_momentum(g, ghat, mu):
     # TODO 3
     # Hint
     # Momentum should accumulate information across iterations instead of using only the current step.
-    # First normalize `ghat` for each sample so its scale does not dominate the update.
-    # Then combine the previous momentum `g` and the normalized gradient using the decay factor `mu`.
+    # First normalize `ghat` for each sample so its scale does not dominate the update...
+    # momentum `g` and the normalized gradient using the decay factor `mu`.
     # The returned tensor is the running direction that will be used to update `x_adv`.
-
     # [The code below is a basic version, so it should be modified.]
-    return ghat
+    norm = torch.sum(torch.abs(ghat), dim=(1, 2, 3), keepdim=True)
+    norm = torch.clamp(norm, min=1e-12)
+    normalized_ghat = ghat / norm
+    g = mu * g + normalized_ghat
+    return g
 ####################################################################################################
 
 
@@ -88,18 +97,29 @@ def apply_di(x_adv, attack_type, di_prob, di_pad_amount, di_pad_value):
         return diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value)
     return x_adv
 
-# [DI] Implementing diverse input (resize & padding) 
+# [DI] Implementing diverse input (resize & padding)
 def diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value):
     # TODO 4
-    # Hint 
+    # Hint
     # Diverse Input applies a random spatial transform before the forward pass.
     # A standard version resizes the image to a random larger size, pads it at random offsets,
     # resizes it back to the original resolution, and keeps the batch shape unchanged.
     # This transformed input should be used only with probability `di_prob`
-
     # [The code below is a basic version, so it should be modified.]
-    x_di = x_adv
-    return x_di
+    if torch.rand(1).item() < di_prob:
+        _, _, h, w = x_adv.size()
+        rnd = torch.randint(h, h + di_pad_amount, (1,)).item()
+        rescaled = F.interpolate(x_adv, size=(rnd, rnd), mode='nearest')
+        
+        pad_top = torch.randint(0, h + di_pad_amount - rnd + 1, (1,)).item()
+        pad_bottom = h + di_pad_amount - rnd - pad_top
+        pad_left = torch.randint(0, w + di_pad_amount - rnd + 1, (1,)).item()
+        pad_right = w + di_pad_amount - rnd - pad_left
+        
+        padded = F.pad(rescaled, (pad_left, pad_right, pad_top, pad_bottom), value=di_pad_value)
+        x_di = F.interpolate(padded, size=(h, w), mode='nearest')
+        return x_di
+    return x_adv
 ####################################################################################################
 
 
@@ -116,17 +136,18 @@ def apply_ti(ghat, attack_type, ti_conv):
 def gkern(kernlen=7, nsig=3):
     """Returns a 2D Gaussian kernel array."""
     # TODO 5
-    # Hint 
+    # Hint
     # This function should build the Gaussian filter used for translation-invariant smoothing.
     # Create 1D coordinates from `-nsig` to `nsig`, convert them into Gaussian weights,
     # and form a 2D kernel by taking the outer product of the 1D vector with itself.
     # Finally, normalize the kernel so that all entries sum to 1,
     # because the convolution should smooth the gradient without changing its overall scale too much.
-
-    # [The code below is a basic version, so it should be modified.] keeping a valid kernel whose center is 1 so TI becomes an identity operation.
-    kernel = np.zeros((kernlen, kernlen), dtype=np.float32)
-    kernel[kernlen // 2, kernlen // 2] = 1.0
-    return kernel
+    # [The code below is a basic version, so it should be modified.]
+    x = np.linspace(-nsig, nsig, kernlen)
+    kern1d = st.norm.pdf(x)
+    kernel_raw = np.outer(kern1d, kern1d)
+    kernel = kernel_raw / kernel_raw.sum()
+    return kernel.astype(np.float32)
 
 # [TI] preparing depthwise convolution
 def create_ti_conv(device, ti_kernel_size):
