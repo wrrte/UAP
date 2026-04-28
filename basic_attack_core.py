@@ -109,7 +109,7 @@ def diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value):
     if torch.rand(1).item() < di_prob:
         _, _, h, w = x_adv.size()
         rnd = torch.randint(h, h + di_pad_amount, (1,)).item()
-        rescaled = F.interpolate(x_adv, size=(rnd, rnd), mode='nearest')
+        rescaled = F.interpolate(x_adv, size=(rnd, rnd), mode='bilinear', align_corners=False)
         
         pad_top = torch.randint(0, h + di_pad_amount - rnd + 1, (1,)).item()
         pad_bottom = h + di_pad_amount - rnd - pad_top
@@ -117,7 +117,7 @@ def diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value):
         pad_right = w + di_pad_amount - rnd - pad_left
         
         padded = F.pad(rescaled, (pad_left, pad_right, pad_top, pad_bottom), value=di_pad_value)
-        x_di = F.interpolate(padded, size=(h, w), mode='nearest')
+        x_di = F.interpolate(padded, size=(h, w), mode='bilinear', align_corners=False)
         return x_di
     return x_adv
 ####################################################################################################
@@ -184,12 +184,21 @@ def calculate_si_ghat(model, x_adv_or_nes, y, number_of_si_scales, target_label,
     # Add each gradient to `grad_sum` with the corresponding `1 / si_div` weight,
     # and return the accumulated result as the final `ghat`.
         
-    # [The code below is a basic version, so it should be modified.] using the base gradient so the basic version stays I-FGSM-like.
-    ghat = calculate_loss_gradient(model, x_adv_or_nes, x_adv_or_nes, y, target_label, feature_attack, x_clean, depth)
-    return ghat
+    grad_sum = 0
+    for si_counter in range(number_of_si_scales):
+        si_div = 2 ** si_counter
+        scaled_x = x_adv_or_nes / si_div
+        
+        scaled_x = scaled_x.detach()
+        scaled_x.requires_grad = True
+        
+        di_x = apply_di(scaled_x, attack_type, di_prob, di_pad_amount, di_pad_value)
+        grad = calculate_loss_gradient(model, di_x, scaled_x, y, target_label, feature_attack, x_clean, depth)
+        
+        grad_sum = grad_sum + grad * (1.0 / si_div)
+        
+    return grad_sum
 ####################################################################################################
-
-
 
 ####################################################################################################
 # [NI] configures NI only when N is provided, and prepares the look-ahead input tensor
@@ -200,7 +209,10 @@ def apply_ni(attack_type, x_adv, alpha, mu, g):
     # and then enable gradients on that tensor.
     # When 'N' is not in attack_type, return the usual prepared input.
 
-    # [The code below is a basic version, so it should be modified.] keeping NI path as baseline behavior.
+    if "N" in attack_type:
+        x_nes = x_adv + alpha * mu * g
+        return prepare_attack_input(x_nes)
+        
     return prepare_attack_input(x_adv)
 
 def apply_ni_decay(attack_type, mu):
