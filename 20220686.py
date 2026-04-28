@@ -18,20 +18,24 @@ For UAP generation dataset and evaluation dataset, you have to mount your Google
 
 # Mount your Google Drive!
 # Do not change
-from google.colab import drive
-drive.mount('/content/drive')
+# 로컬 서버 실행을 위해 Colab 드라이브 마운트 부분을 주석 처리합니다.
+# from google.colab import drive
+# drive.mount('/content/drive')
 
 import os
 
 # Check if Google Drive is successfully mounted
-print(os.path.isdir("/content/drive/MyDrive/UAP/train_sub"))
-print(os.path.isdir("/content/drive/MyDrive/UAP/val_sub"))
-print(os.path.isfile("/content/drive/MyDrive/UAP/imagenet_labels.txt"))
+# 로컬 경로 확인용이 아니므로 주석 처리합니다.
+# print(os.path.isdir("/content/drive/MyDrive/UAP/train_sub"))
+# print(os.path.isdir("/content/drive/MyDrive/UAP/val_sub"))
+# print(os.path.isfile("/content/drive/MyDrive/UAP/imagenet_labels.txt"))
 
 # Code Cell 2
 # Do not Change
 
-project_path = '/content/drive/MyDrive/UAP'
+# 실제 데이터셋(train_sub, val_sub 등)이 위치한 로컬 경로로 수정합니다.
+# 현재 디렉토리에 데이터가 있다면 './' 를 사용합니다.
+project_path = './' 
 os.chdir(project_path)
 print(f"working directory: {os.getcwd()}")
 
