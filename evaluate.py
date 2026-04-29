@@ -130,6 +130,9 @@ def evaluate(test_dataset, test_dataloader, uap):
             global per_source_final_scores  # global dict to collect scores
             per_source_final_scores = {}
         per_source_final_scores[source_model_name] = final_score  # save score for this source
+        
+        # 추가: CSV 기록을 위해 점수들을 반환합니다.
+        return white_box_score, weighted_transfer_score, final_score
 
     # # compute eval_final_score after processing all source models (added)
     # if "per_source_final_scores" in globals() and len(per_source_final_scores) > 0:
