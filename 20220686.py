@@ -130,45 +130,45 @@ $\alpha$ is the step size, which is a hyperparameter.
 We will utilize cross entropy loss as the loss function.
 """
 
-for epoch in range(5):  # number of epochs
-    for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
-        inputs, labels = data
-        inputs = inputs.to('cuda')
-        labels = labels.to('cuda')
+# for epoch in range(5):  # number of epochs
+#     for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
+#         inputs, labels = data
+#         inputs = inputs.to('cuda')
+#         labels = labels.to('cuda')
 
-        eps = max_epsilon / 255.0
-        alpha = step_size / 255.0
+#         eps = max_epsilon / 255.0
+#         alpha = step_size / 255.0
 
-        # =================== TODO 1 ======================
-        # Prepare adversarial inputs
-        # Add UAP to clean inputs
-        adv_inputs = inputs + uap.unsqueeze(0)
-        # clamp adversarial input with [0,1] range
-        adv_inputs = adv_inputs.clamp(0, 1)
-        # normalize input
-        adv_inputs = normalize(adv_inputs)
-        # ================================================
-
-
-        # =================== TODO 1 ======================
-        # Get adversarial model output
-        outputs = model(adv_inputs)
-        # Calculate loss
-        loss = F.cross_entropy(outputs, labels)
-        # ================================================
+#         # =================== TODO 1 ======================
+#         # Prepare adversarial inputs
+#         # Add UAP to clean inputs
+#         adv_inputs = inputs + uap.unsqueeze(0)
+#         # clamp adversarial input with [0,1] range
+#         adv_inputs = adv_inputs.clamp(0, 1)
+#         # normalize input
+#         adv_inputs = normalize(adv_inputs)
+#         # ================================================
 
 
-        loss.backward()
-        grad = uap.grad.data
+#         # =================== TODO 1 ======================
+#         # Get adversarial model output
+#         outputs = model(adv_inputs)
+#         # Calculate loss
+#         loss = F.cross_entropy(outputs, labels)
+#         # ================================================
 
-        # =================== TODO 1 ======================
-        # Update UAP with FGSM
-        uap.data = uap.data + alpha * torch.sign(grad)
-        # clamp UAP with epsilon value
-        uap.data = uap.data.clamp(-eps, eps)
-        # ================================================
 
-        uap.grad.data.zero_()
+#         loss.backward()
+#         grad = uap.grad.data
+
+#         # =================== TODO 1 ======================
+#         # Update UAP with FGSM
+#         uap.data = uap.data + alpha * torch.sign(grad)
+#         # clamp UAP with epsilon value
+#         uap.data = uap.data.clamp(-eps, eps)
+#         # ================================================
+
+#         uap.grad.data.zero_()
 
 """### 2-4. Transferable UAP Generation
 
@@ -190,15 +190,15 @@ step_size=0.7
 
 # Hyperparameter tuning
 # ======================= TODO 8 =======================
-attack_type = "MNDTS" # combination of "M, N, D, T, S" e.g., "MDT", "MNDTS", ... blank string "" for simple SGD-UAP (FGSM-based)
-mu=1.0
-number_of_si_scales=5
-di_prob=0.5
-di_pad_amount=20
-di_pad_value=0
-ti_kernel_size=15
-feature_attack = True # True for feature-level attack, False for prediction-level attack
-depth='layer2' # 'layer1', 'layer2', 'layer3', 'layer4'
+attack_type = "MNDTS" 
+mu = 1.0
+number_of_si_scales = 5  
+di_prob = 0.5            
+di_pad_amount = 20       
+di_pad_value = 0
+ti_kernel_size = 15      
+feature_attack = True    # PG-UAP 논문 오리지널 방식 (Feature 활성화)
+depth = 'layer2' 
 # ======================================================
 
 target_label = -1
@@ -249,227 +249,227 @@ for epoch in range(5):  # number of epochs
 ### **3-1. Evaluation for Clean Data**
 """
 
-correct = 0
-total = 0
+# correct = 0
+# total = 0
 
-for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
-    inputs, labels = data
-    inputs = inputs.to('cuda')
-    labels = labels.to('cuda')
+# for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+#     inputs, labels = data
+#     inputs = inputs.to('cuda')
+#     labels = labels.to('cuda')
 
-    inputs = normalize(inputs)
+#     inputs = normalize(inputs)
 
-    outputs = model(inputs)
-    predicted = torch.argmax(outputs.data, dim=1)
-    total += labels.size(0)
-    correct += (predicted == labels).sum().item()
+#     outputs = model(inputs)
+#     predicted = torch.argmax(outputs.data, dim=1)
+#     total += labels.size(0)
+#     correct += (predicted == labels).sum().item()
 
-print('Accuracy of the model on clean validation images: {} %'.format(100 * correct / total))
+# print('Accuracy of the model on clean validation images: {} %'.format(100 * correct / total))
 
 """### **3-2. Evaluation for Random Noise**
 
 For a fair comparison, we define a random noise with pixel value within the range $[-\epsilon, \epsilon]$.
 """
 
-correct = 0
-total = 0
+# correct = 0
+# total = 0
 
-# Define Random noise with pixel value [-eps, eps]
-random_noise = (torch.rand_like(uap) * 2 - 1) * eps
-
-
-for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
-    inputs, labels = data
-    inputs = inputs.to('cuda')
-    labels = labels.to('cuda')
+# # Define Random noise with pixel value [-eps, eps]
+# random_noise = (torch.rand_like(uap) * 2 - 1) * eps
 
 
-    # Prepare adversarial inputs
-    # Add UAP to clean inputs
-    adv_inputs_random = inputs + random_noise.unsqueeze(0)
-    # clamp adversarial inputs within [0,1] range
-    adv_inputs_random = adv_inputs_random.clamp(0, 1)
-    # normalize adversarial input
-    adv_inputs_random = normalize(adv_inputs_random)
+# for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+#     inputs, labels = data
+#     inputs = inputs.to('cuda')
+#     labels = labels.to('cuda')
 
-    outputs = model(adv_inputs_random)
-    predicted = torch.argmax(outputs.data, dim=1)
-    total += labels.size(0)
-    correct += (predicted == labels).sum().item()
 
-asr = 100*(1-(correct/total))
-print(f'Attack Success Rate: {asr}%')
+#     # Prepare adversarial inputs
+#     # Add UAP to clean inputs
+#     adv_inputs_random = inputs + random_noise.unsqueeze(0)
+#     # clamp adversarial inputs within [0,1] range
+#     adv_inputs_random = adv_inputs_random.clamp(0, 1)
+#     # normalize adversarial input
+#     adv_inputs_random = normalize(adv_inputs_random)
+
+#     outputs = model(adv_inputs_random)
+#     predicted = torch.argmax(outputs.data, dim=1)
+#     total += labels.size(0)
+#     correct += (predicted == labels).sum().item()
+
+# asr = 100*(1-(correct/total))
+# print(f'Attack Success Rate: {asr}%')
 
 """### **3-3. Evaluation for SGD-UAP**"""
 
-correct=0
-total=0
+# correct=0
+# total=0
 
-for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+# for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
 
-    inputs, labels = data
-    inputs = inputs.to('cuda')
-    labels = labels.to('cuda')
-
-
-    # Prepare adversarial inputs
-    # Add UAP to clean inputs
-    adv_inputs = inputs + uap.unsqueeze(0)
-    # clamp adversarial inputs within [0,1] range
-    adv_inputs = adv_inputs.clamp(0, 1)
-    # normalize adversarial input
-    adv_inputs = normalize(adv_inputs)
+#     inputs, labels = data
+#     inputs = inputs.to('cuda')
+#     labels = labels.to('cuda')
 
 
-    outputs = model(adv_inputs)
-    predicted = F.softmax(outputs.data, dim=1).max(dim=1)
-    # print(predicted)
+#     # Prepare adversarial inputs
+#     # Add UAP to clean inputs
+#     adv_inputs = inputs + uap.unsqueeze(0)
+#     # clamp adversarial inputs within [0,1] range
+#     adv_inputs = adv_inputs.clamp(0, 1)
+#     # normalize adversarial input
+#     adv_inputs = normalize(adv_inputs)
 
-    total += labels.size(0)
-    correct += torch.sum((predicted[1] == labels).float()).item()
 
-asr = 100*(1-(correct/total))
-print(f'Attack Success Rate: {asr}%')
+#     outputs = model(adv_inputs)
+#     predicted = F.softmax(outputs.data, dim=1).max(dim=1)
+#     # print(predicted)
+
+#     total += labels.size(0)
+#     correct += torch.sum((predicted[1] == labels).float()).item()
+
+# asr = 100*(1-(correct/total))
+# print(f'Attack Success Rate: {asr}%')
 
 """### **3-4. Evaluation for transferable UAP (whitebox)**"""
 
-correct=0
-total=0
+# correct=0
+# total=0
 
-for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
+# for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
 
-    inputs, labels = data
-    inputs = inputs.to('cuda')
-    labels = labels.to('cuda')
-
-
-    # Prepare adversarial inputs
-    # Add UAP to clean inputs
-    adv_inputs = inputs + uap_transfer.unsqueeze(0)
-    # clamp adversarial inputs within [0,1] range
-    adv_inputs = adv_inputs.clamp(0, 1)
-    # normalize adversarial input
-    adv_inputs = normalize(adv_inputs)
+#     inputs, labels = data
+#     inputs = inputs.to('cuda')
+#     labels = labels.to('cuda')
 
 
-    outputs = model(adv_inputs)
-    predicted = F.softmax(outputs.data, dim=1).max(dim=1)
-    # print(predicted)
+#     # Prepare adversarial inputs
+#     # Add UAP to clean inputs
+#     adv_inputs = inputs + uap_transfer.unsqueeze(0)
+#     # clamp adversarial inputs within [0,1] range
+#     adv_inputs = adv_inputs.clamp(0, 1)
+#     # normalize adversarial input
+#     adv_inputs = normalize(adv_inputs)
 
-    total += labels.size(0)
-    correct += torch.sum((predicted[1] == labels).float()).item()
 
-asr = 100*(1-(correct/total))
-print(f'Attack Success Rate: {asr}%')
+#     outputs = model(adv_inputs)
+#     predicted = F.softmax(outputs.data, dim=1).max(dim=1)
+#     # print(predicted)
+
+#     total += labels.size(0)
+#     correct += torch.sum((predicted[1] == labels).float()).item()
+
+# asr = 100*(1-(correct/total))
+# print(f'Attack Success Rate: {asr}%')
 
 """## **4. Visualization**
 
 ### 4-1. UAP Visualization
 """
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-# Rescale uap [-eps, eps] to [0,1]
-uap_vis = (uap + eps) / (eps * 2)
-uap_vis = uap_vis.detach().cpu().permute(1, 2, 0).numpy()
+# # Rescale uap [-eps, eps] to [0,1]
+# uap_vis = (uap + eps) / (eps * 2)
+# uap_vis = uap_vis.detach().cpu().permute(1, 2, 0).numpy()
 
-uap_transfer_vis = (uap_transfer + eps) / (eps * 2)
-uap_transfer_vis = uap_transfer_vis.detach().cpu().permute(1, 2, 0).numpy()
+# uap_transfer_vis = (uap_transfer + eps) / (eps * 2)
+# uap_transfer_vis = uap_transfer_vis.detach().cpu().permute(1, 2, 0).numpy()
 
-fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+# fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
-axes[0].imshow(uap_vis)
-axes[0].set_title('SGD-UAP')
-axes[0].axis('off')
+# axes[0].imshow(uap_vis)
+# axes[0].set_title('SGD-UAP')
+# axes[0].axis('off')
 
-axes[1].imshow(uap_transfer_vis)
-axes[1].set_title('Transferable UAP')
-axes[1].axis('off')
+# axes[1].imshow(uap_transfer_vis)
+# axes[1].set_title('Transferable UAP')
+# axes[1].axis('off')
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
-"""### 4-2. Model Prediction Visualization"""
+# """### 4-2. Model Prediction Visualization"""
 
-# Numerical label to text label for visualization
-def read_txt_to_dict(file_path):
-    my_dict = {}
-    with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
-            line = line.strip()
-            line = line.strip('{')
-            line = line.strip('}')
-            if line:
-                key_value = line.split(': ', 1)
-                key = int(key_value[0])
-                value = key_value[1].strip().rstrip(",").strip("'")
-                my_dict[key] = value
-    return my_dict
+# # Numerical label to text label for visualization
+# def read_txt_to_dict(file_path):
+#     my_dict = {}
+#     with open(file_path, 'r', encoding='utf-8') as file:
+#         for line in file:
+#             line = line.strip()
+#             line = line.strip('{')
+#             line = line.strip('}')
+#             if line:
+#                 key_value = line.split(': ', 1)
+#                 key = int(key_value[0])
+#                 value = key_value[1].strip().rstrip(",").strip("'")
+#                 my_dict[key] = value
+#     return my_dict
 
-# imagenet_labels_dict = read_txt_to_dict('/content/drive/MyDrive/UAP_dataset/imagenet_labels.txt')
-imagenet_labels_dict = read_txt_to_dict('imagenet_labels.txt')
+# # imagenet_labels_dict = read_txt_to_dict('/content/drive/MyDrive/UAP_dataset/imagenet_labels.txt')
+# imagenet_labels_dict = read_txt_to_dict('imagenet_labels.txt')
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-random_index = random.randint(0, len(val_loader))
-data = val_loader.dataset[random_index]
+# random_index = random.randint(0, len(val_loader))
+# data = val_loader.dataset[random_index]
 
-inputs, labels = data
-inputs = inputs.to('cuda')
-inputs = inputs.unsqueeze(0)
+# inputs, labels = data
+# inputs = inputs.to('cuda')
+# inputs = inputs.unsqueeze(0)
 
-input_norm = normalize(inputs)
-clean_output = model(input_norm)
-clean_predicted = torch.argmax(clean_output.data, dim=1)
+# input_norm = normalize(inputs)
+# clean_output = model(input_norm)
+# clean_predicted = torch.argmax(clean_output.data, dim=1)
 
-adv_input_random = inputs + random_noise.unsqueeze(0)
-adv_input_random = adv_input_random.clamp(0, 1)
-adv_input_random_norm = normalize(adv_input_random)
+# adv_input_random = inputs + random_noise.unsqueeze(0)
+# adv_input_random = adv_input_random.clamp(0, 1)
+# adv_input_random_norm = normalize(adv_input_random)
 
-adv_input = inputs + uap.unsqueeze(0)
-adv_input = adv_input.clamp(0, 1)
-adv_input_norm = normalize(adv_input)
+# adv_input = inputs + uap.unsqueeze(0)
+# adv_input = adv_input.clamp(0, 1)
+# adv_input_norm = normalize(adv_input)
 
-# uap_transfer
-adv_input_transfer = inputs + uap_transfer.unsqueeze(0)
-adv_input_transfer = adv_input_transfer.clamp(0, 1)
-adv_input_transfer_norm = normalize(adv_input_transfer)
+# # uap_transfer
+# adv_input_transfer = inputs + uap_transfer.unsqueeze(0)
+# adv_input_transfer = adv_input_transfer.clamp(0, 1)
+# adv_input_transfer_norm = normalize(adv_input_transfer)
 
-adv_random_output = model(adv_input_random_norm)
-adv_random_predicted = torch.argmax(adv_random_output.data, dim=1)
+# adv_random_output = model(adv_input_random_norm)
+# adv_random_predicted = torch.argmax(adv_random_output.data, dim=1)
 
-adv_output = model(adv_input_norm)
-adv_predicted = torch.argmax(adv_output.data, dim=1)
+# adv_output = model(adv_input_norm)
+# adv_predicted = torch.argmax(adv_output.data, dim=1)
 
-adv_transfer_output = model(adv_input_transfer_norm)
-adv_transfer_predicted = torch.argmax(adv_transfer_output.data, dim=1)
+# adv_transfer_output = model(adv_input_transfer_norm)
+# adv_transfer_predicted = torch.argmax(adv_transfer_output.data, dim=1)
 
-fig, axes = plt.subplots(1, 4, figsize=(24, 5))
+# fig, axes = plt.subplots(1, 4, figsize=(24, 5))
 
-axes[0].imshow(inputs[0].detach().cpu().permute(1, 2, 0).numpy())
-axes[0].set_title(f"Clean: {imagenet_labels_dict[clean_predicted[0].item()]}", wrap=True)
-axes[0].axis("off")
+# axes[0].imshow(inputs[0].detach().cpu().permute(1, 2, 0).numpy())
+# axes[0].set_title(f"Clean: {imagenet_labels_dict[clean_predicted[0].item()]}", wrap=True)
+# axes[0].axis("off")
 
-axes[1].imshow(adv_input_random[0].detach().cpu().permute(1, 2, 0).numpy())
-axes[1].set_title(f"Random Noise: {imagenet_labels_dict[adv_random_predicted[0].item()]}", wrap=True)
-axes[1].axis("off")
+# axes[1].imshow(adv_input_random[0].detach().cpu().permute(1, 2, 0).numpy())
+# axes[1].set_title(f"Random Noise: {imagenet_labels_dict[adv_random_predicted[0].item()]}", wrap=True)
+# axes[1].axis("off")
 
-axes[2].imshow(adv_input[0].detach().cpu().permute(1, 2, 0).numpy())
-axes[2].set_title(f"SGD-UAP: {imagenet_labels_dict[adv_predicted[0].item()]}", wrap=True)
-axes[2].axis("off")
+# axes[2].imshow(adv_input[0].detach().cpu().permute(1, 2, 0).numpy())
+# axes[2].set_title(f"SGD-UAP: {imagenet_labels_dict[adv_predicted[0].item()]}", wrap=True)
+# axes[2].axis("off")
 
-axes[3].imshow(adv_input_transfer[0].detach().cpu().permute(1, 2, 0).numpy())
-axes[3].set_title(f"Transferable UAP: {imagenet_labels_dict[adv_transfer_predicted[0].item()]}", wrap=True)
-axes[3].axis("off")
+# axes[3].imshow(adv_input_transfer[0].detach().cpu().permute(1, 2, 0).numpy())
+# axes[3].set_title(f"Transferable UAP: {imagenet_labels_dict[adv_transfer_predicted[0].item()]}", wrap=True)
+# axes[3].axis("off")
 
-plt.show()
+# plt.show()
 
 """## **5. Black-box Evalution**
 
 ### **5-1. SGD-UAP black-box evaluation**
 """
 
-evaluate(dataset_val, val_loader, uap)
+# evaluate(dataset_val, val_loader, uap)
 
 """### **5-2. Transferable UAP black-box evaluation**"""
 
