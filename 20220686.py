@@ -180,31 +180,20 @@ Please modify **basic_attack_core.py** file.
 """
 
 import itertools
-import csv # CSV 기록을 위한 모듈 추가
-
-# 결과를 저장할 CSV 파일 준비
-csv_filename = "hyperparameter_tuning_results.csv"
-csv_file = open(csv_filename, mode='w', newline='', encoding='utf-8')
-csv_writer = csv.writer(csv_file)
-# CSV 헤더 작성
-csv_writer.writerow([
-    'attack_type', 'mu', 'number_of_si_scales', 'di_prob', 'di_pad_amount', 
-    'di_pad_value', 'ti_kernel_size', 'feature_attack', 'depth', 
-    'White-box SR', 'Transfer SR', 'Final Score'
-])
+import csv
+import os
 
 # Hyperparameter tuning
 # ======================= TODO 8 =======================
-# 자동으로 점수를 측정하기 위해 테스트할 하이퍼파라미터 값들을 리스트 형태로 설정합니다.
 attack_types = ["MNDTS"] 
-mus = [1.0]
-number_of_si_scales_list = [5, 10]
-di_probs = [0.8, 1.0]          
-di_pad_amounts = [28, 31, 34]
+mus = [1.0] # 모멘텀은 1.0 유지
+number_of_si_scales_list = [3, 5]  # 5 주변과 더 작은 값 탐색
+di_probs = [0.7, 0.8, 0.9]         # 1.0 배제, 0.8 주변 집중 탐색
+di_pad_amounts = [31, 34, 37]      # 34 주변 및 더 큰 값 탐색
 di_pad_values = [0]
-ti_kernel_sizes = [5]
+ti_kernel_sizes = [5, 7]           # 전이성 향상을 위해 커널 사이즈 7 추가 테스트
 feature_attacks = [True]
-depths = ['layer3', 'layer4'] 
+depths = ['layer3', 'layer4']
 # ======================================================
 
 # itertools.product를 사용하여 설정한 모든 파라미터 조합을 생성합니다.
@@ -273,43 +262,28 @@ for (attack_type, mu, number_of_si_scales, di_prob, di_pad_amount,
             uap_transfer = uap_transfer + pert
 
             uap_transfer.data = uap_transfer.data.clamp(-eps, eps)
-            
-    # 해당 조합에 대한 UAP 학습이 끝나면 곧바로 블랙박스 평가를 진행하여 점수를 추출합니다.
-    print(f"\n[Evaluating...] Feature_Attack: {feature_attack}, Depth: {depth}")
+
+    # 학습 완료 후 점수 측정
     white_box_score, transfer_score, final_score = evaluate(dataset_val, val_loader, uap_transfer)
+
+    # CSV 기록 로직: 동시 실행 환경을 고려하여 쓰기 직전에 열고 기록 후 즉시 닫습니다.
+    csv_filename = "hyperparameter_tuning_results.csv"
     
-    # 추출한 점수를 CSV에 한 줄씩 기록합니다.
-    csv_writer.writerow([
-        attack_type, mu, number_of_si_scales, di_prob, di_pad_amount, 
-        di_pad_value, ti_kernel_size, feature_attack, depth, 
-        white_box_score, transfer_score, final_score
-    ])
-    csv_file.flush() # 스크립트가 중간에 멈춰도 파일에 즉시 저장되도록 flush 처리
-
-# 모든 조합 테스트 완료 후 CSV 파일 닫기
-csv_file.close()
-print("\n[Done] All hyperparameter configurations have been saved to hyperparameter_tuning_results.csv")
-
-
-    """## **3. White-box Evaluation**
-
-    ### **3-1. Evaluation for Clean Data**
-    """
-
-    # correct = 0
-    # total = 0
-
-    # for i, data in tqdm(enumerate(val_loader), total=len(val_loader)):
-    # ... (기존 3장, 4장, 5장 주석 처리된 내용들 그대로 유지) ...
-
-    """## **5. Black-box Evalution**
-
-    ### **5-1. SGD-UAP black-box evaluation**
-    """
-
-    # evaluate(dataset_val, val_loader, uap)
-
-    """### **5-2. Transferable UAP black-box evaluation**"""
+    # 파일 존재 여부 및 크기를 확인하여 헤더 작성 필요성 판단
+    write_header = not os.path.exists(csv_filename) or os.stat(csv_filename).st_size == 0
     
-    # 루프 내부에서 위에서 모두 평가하도록 처리했으므로 맨 아래쪽 단일 evaluate 호출은 주석 처리합니다.
-    # evaluate(dataset_val, val_loader, uap_transfer)
+    with open(csv_filename, mode='a', newline='', encoding='utf-8') as f:
+        csv_writer = csv.writer(f)
+        if write_header:
+            csv_writer.writerow([
+                'attack_type', 'mu', 'number_of_si_scales', 'di_prob', 'di_pad_amount', 
+                'di_pad_value', 'ti_kernel_size', 'feature_attack', 'depth', 
+                'White-box SR', 'Transfer SR', 'Final Score'
+            ])
+        csv_writer.writerow([
+            attack_type, mu, number_of_si_scales, di_prob, di_pad_amount, 
+            di_pad_value, ti_kernel_size, feature_attack, depth, 
+            white_box_score, transfer_score, final_score
+        ])
+    
+    print(f"Result saved for config: {depth}, {di_prob}")
