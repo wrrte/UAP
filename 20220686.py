@@ -185,15 +185,16 @@ import os
 
 # Hyperparameter tuning
 # ======================= TODO 8 =======================
+# 자동으로 점수를 측정하기 위해 테스트할 하이퍼파라미터 값들을 리스트 형태로 설정합니다.
 attack_types = ["MNDTS"] 
-mus = [1.0] # 모멘텀은 1.0 유지
-number_of_si_scales_list = [3, 5]  # 5 주변과 더 작은 값 탐색
-di_probs = [0.7, 0.8, 0.9]         # 1.0 배제, 0.8 주변 집중 탐색
-di_pad_amounts = [31, 34, 37]      # 34 주변 및 더 큰 값 탐색
+mus = [1.0]
+number_of_si_scales_list = [2]  # 최고점을 낸 2와 함께, 극단적으로 낮은 1도 포함하여 확인
+di_probs = [0.3, 0.4]         # 81.51점을 달성한 0.3, 0.4 최적 구간에 집중
+di_pad_amounts = [28, 31, 34] # 새로운 저변환(low-distortion) 환경에 맞춰 패딩 크기 재탐색!
 di_pad_values = [0]
-ti_kernel_sizes = [5, 7]           # 전이성 향상을 위해 커널 사이즈 7 추가 테스트
-feature_attacks = [True]
-depths = ['layer3', 'layer4']
+ti_kernel_sizes = [1, 3]           # 최적화가 완료된 커널 사이즈 (1, 3 유지)
+feature_attacks = [True]     # 대망의 Feature Attack 활성화 및 비활성화 테스트
+depths = ['layer3', 'layer4']       # (Tip: 'layer3'로 바꿔보는 것도 전이성에 큰 도움이 될 수 있습니다) - 최고 효율 layer3 고정
 # ======================================================
 
 # itertools.product를 사용하여 설정한 모든 파라미터 조합을 생성합니다.
