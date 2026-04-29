@@ -37,12 +37,14 @@ def extract_features(model, input, depth):
     handle.remove()
     return features
 
-# [TODO 2] Feature attack loss
+####################################################################################################
+# [ALL] computes CE loss from given model_input, performs backpropagation, and returns the gradient tensor
 def calculate_loss_gradient(model, model_input, grad_input, y, target_label, feature_attack, clean_input, depth):
     output = model(model_input)
     if feature_attack==False:
         loss = nn.CrossEntropyLoss()(output, y)
     if feature_attack==True:
+        # TODO 2
         clean_features = extract_features(model, clean_input, depth)[0]
         adv_features = extract_features(model, model_input, depth)[0]
         
@@ -54,26 +56,22 @@ def calculate_loss_gradient(model, model_input, grad_input, y, target_label, fea
     if target_label >= 0:
         loss = -loss
     return torch.autograd.grad(loss, grad_input, retain_graph=False, create_graph=False)[0]
-####################################################################################################
-
-
 
 ####################################################################################################
-# [MI] configures MI only when M is provided, and sets decay rate via the mu parameter
+# [MI] configures MI only when M is provided
 def apply_mi(attack_type, mu):
     if "M" not in attack_type:
         return 0
     return mu
 
+# [MI] accumulates the current gradient (ghat) into momentum (g)
 def update_mi_momentum(g, ghat, mu):
+    # TODO 3
     norm = torch.sum(torch.abs(ghat), dim=(1, 2, 3), keepdim=True)
     norm = torch.clamp(norm, min=1e-12)
     normalized_ghat = ghat / norm
     g = mu * g + normalized_ghat
     return g
-####################################################################################################
-
-
 
 ####################################################################################################
 # [DI] configures DI only when D is provided
@@ -82,11 +80,12 @@ def apply_di(x_adv, attack_type, di_prob, di_pad_amount, di_pad_value):
         return diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value)
     return x_adv
 
-# [DI] Implementing diverse input (resize & padding)
+# [DI] Implementing diverse input (resize & padding) - 73.58점 당시의 로직
 def diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value):
+    # TODO 4
     if torch.rand(1).item() < di_prob:
         _, _, h, w = x_adv.size()
-        rnd = torch.randint(h, h + di_pad_amount + 1, (1,)).item()
+        rnd = torch.randint(h, h + di_pad_amount, (1,)).item()
         rescaled = F.interpolate(x_adv, size=(rnd, rnd), mode='bilinear', align_corners=False)
         
         pad_top = torch.randint(0, h + di_pad_amount - rnd + 1, (1,)).item()
@@ -98,13 +97,9 @@ def diverse_input(x_adv, di_prob, di_pad_amount, di_pad_value):
         x_di = F.interpolate(padded, size=(h, w), mode='bilinear', align_corners=False)
         return x_di
     return x_adv
-####################################################################################################
-
-
 
 ####################################################################################################
 # [TI] configures TI only when T is provided 
-# (FYI. ti_conv is a smoothed gradient generated via the create_ti_conv function.)
 def apply_ti(ghat, attack_type, ti_conv):
     if 'T' in attack_type:
         return ti_conv(ghat)
@@ -112,6 +107,8 @@ def apply_ti(ghat, attack_type, ti_conv):
 
 # [TI] creating Gaussian kernel
 def gkern(kernlen=7, nsig=3):
+    """Returns a 2D Gaussian kernel array."""
+    # TODO 5
     x = np.linspace(-nsig, nsig, kernlen)
     kern1d = st.norm.pdf(x)
     kernel_raw = np.outer(kern1d, kern1d)
@@ -129,9 +126,6 @@ def create_ti_conv(device, ti_kernel_size):
         ti_conv.weight = nn.Parameter(torch.from_numpy(stack_kernel).float().to(device))
         ti_conv.requires_grad_(False)
     return ti_conv.to(device)
-####################################################################################################
-
-
 
 ####################################################################################################
 # [SI] configures SI only when S is provided
@@ -142,9 +136,10 @@ def apply_si(model, x_adv_or_nes, y, number_of_si_scales, target_label, attack_t
                                  di_pad_amount, di_pad_value, feature_attack, x_clean, depth)
     return None
 
-# [SI] accumulates gradients across multi-scale inputs (SI), with optional Diverse Input (DI) support via apply_di
+# [SI] accumulates gradients across multi-scale inputs - 73.58점 당시의 가중치 축소 로직
 def calculate_si_ghat(model, x_adv_or_nes, y, number_of_si_scales, target_label, 
                       attack_type, di_prob, di_pad_amount, di_pad_value, feature_attack, x_clean, depth):
+    # TODO 6
     grad_sum = 0
     for si_counter in range(number_of_si_scales):
         si_div = 2 ** si_counter
@@ -156,23 +151,21 @@ def calculate_si_ghat(model, x_adv_or_nes, y, number_of_si_scales, target_label,
         di_x = apply_di(scaled_x, attack_type, di_prob, di_pad_amount, di_pad_value)
         grad = calculate_loss_gradient(model, di_x, scaled_x, y, target_label, feature_attack, x_clean, depth)
         
-        # 잃어버렸던 핵심 가중치 연산 복구
         grad_sum = grad_sum + grad * (1.0 / si_div)
         
     return grad_sum
-####################################################################################################
 
 ####################################################################################################
-# [NI] configures NI only when N is provided, and prepares the look-ahead input tensor
+# [NI] configures NI only when N is provided
 def apply_ni(attack_type, x_adv, alpha, mu, g):
+    # TODO 7 - 73.58점 당시의 prepare_attack_input 래퍼 적용
     if "N" in attack_type:
         x_nes = x_adv + alpha * mu * g
-        # 잃어버렸던 핵심 Gradient 활성화 함수 복구
         return prepare_attack_input(x_nes)
+        
     return prepare_attack_input(x_adv)
 
 def apply_ni_decay(attack_type, mu):
     if "N" not in attack_type:
         return 0
     return mu
-####################################################################################################

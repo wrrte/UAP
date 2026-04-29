@@ -192,12 +192,12 @@ step_size=0.7
 # ======================= TODO 8 =======================
 attack_type = "MNDTS" 
 mu = 1.0
-number_of_si_scales = 5  
-di_prob = 0.5            
-di_pad_amount = 20       
+number_of_si_scales = 4  
+di_prob = 0.5
+di_pad_amount = 20
 di_pad_value = 0
-ti_kernel_size = 15      
-feature_attack = True    # PG-UAP 논문 오리지널 방식 (Feature 활성화)
+ti_kernel_size = 7       
+feature_attack = False   
 depth = 'layer2' 
 # ======================================================
 
