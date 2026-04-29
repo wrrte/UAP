@@ -198,13 +198,13 @@ csv_writer.writerow([
 # 자동으로 점수를 측정하기 위해 테스트할 하이퍼파라미터 값들을 리스트 형태로 설정합니다.
 attack_types = ["MNDTS"] 
 mus = [1.0]
-number_of_si_scales_list = [5, 10]  # 예: SI 끄기 및 켜기 테스트
+number_of_si_scales_list = [5, 10]
 di_probs = [0.8, 1.0]          
 di_pad_amounts = [28, 31, 34]
 di_pad_values = [0]
 ti_kernel_sizes = [5]
-feature_attacks = [True]     # 대망의 Feature Attack 활성화 및 비활성화 테스트
-depths = ['layer3', 'layer4']       # (Tip: 'layer3'로 바꿔보는 것도 전이성에 큰 도움이 될 수 있습니다)
+feature_attacks = [True]
+depths = ['layer3', 'layer4'] 
 # ======================================================
 
 # itertools.product를 사용하여 설정한 모든 파라미터 조합을 생성합니다.
