@@ -203,7 +203,7 @@ depth = 'layer3'         # (Tip: 'layer3'로 바꿔보는 것도 전이성에 �
 
 target_label = -1
 
-for epoch in range(772):  # number of epochs
+for epoch in range(7):  # number of epochs
     g = 0
     for i, data in tqdm(enumerate(train_loader), total=len(train_loader)):
         inputs, labels = data
